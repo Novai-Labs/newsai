@@ -149,11 +149,7 @@
         updateArchiveDropdown();
         return;
       }
-      fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
+      fetch(API_URL)
         .then(r=>r.json())
         .then(result=>{
           showResults(result);
