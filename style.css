@@ -77,3 +77,24 @@ input[type="button"]:disabled, button:disabled {
   .container { padding: 10px; }
   h1 { font-size: 1.3em; }
 }
+.styled-select {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  background: linear-gradient(90deg, #eef3ff 40%, #e0eaff 100%);
+  font-size: 1em;
+  margin-bottom: 0;
+  min-width: 140px;
+  transition: border 0.2s;
+}
+.styled-select:focus {
+  outline: none;
+  border: 1.5px solid #5472fa;
+}
+#deleteArchive {
+  margin-left: 0;
+}
+@media (max-width:500px) {
+  .styled-select { min-width: 80px; }
+}
+
