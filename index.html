@@ -34,10 +34,13 @@
 
     <div class="section" id="archiveSection">
       <div><b>Archive</b> <span class="archived-label">(cached locally)</span></div>
-      <select id="archiveDropdown"></select>
-      <input type="button" value="Delete" id="deleteArchive" title="Delete this archive entry">
-      <div id="archiveResults" style="margin-top:10px;"></div>
+      <div style="display:flex;align-items:center;gap:15px;">
+        <select id="archiveDropdown" class="styled-select"></select>
+        <input type="button" value="Delete" id="deleteArchive" title="Delete this archive entry">
+      </div>
+      <div id="archiveResults" style="margin-top:18px;"></div>
     </div>
+
 
     <div class="section center">
       <button id="manualPullBtn" class="primary-btn">Pull Latest <span id="cooldown"></span></button>
