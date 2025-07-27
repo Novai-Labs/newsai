@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Divergence Monitor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #refreshBtn[disabled] { background: #ccc; cursor: not-allowed; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <h1>S&P 500 Divergent Stocks</h1>
+  <p id="last-update">Last updated: --</p>
+  <button id="refreshBtn">Manual Refresh</button>
+
+  <h2>Flagged Stocks</h2>
+  <table id="flagged">
+    <thead>
+      <tr><th>Symbol</th><th>Change %</th><th>Delta %</th><th>Reason</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_URL = "https://YOUR_API.execute-api.us-east-1.amazonaws.com/prod/news";
+    const refreshBtn = document.getElementById("refreshBtn");
+    const lastUpdate = document.getElementById("last-update");
+
+    async function fetchData() {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      lastUpdate.textContent = "Last updated: " + new Date().toLocaleTimeString();
+
+      // Render flagged table
+      const tbody = document.querySelector("#flagged tbody");
+      tbody.innerHTML = "";
+      (data.flagged || []).forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.symbol}</td>
+          <td>${row.change.toFixed(2)}%</td>
+          <td>${row.delta.toFixed(2)}%</td>
+          <td>${row.reason}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Initial load
+    fetchData();
+
+    // Auto refresh every hour while page is open
+    setInterval(fetchData, 60 * 60 * 1000);
+
+    // Manual refresh with 3-minute cooldown
+    refreshBtn.addEventListener("click", () => {
+      fetchData();
+      refreshBtn.disabled = true;
+      setTimeout(() => {
+        refreshBtn.disabled = false;
+      }, 3 * 60 * 1000);
+    });
+  </script>
+</body>
+</html>
