@@ -4,32 +4,14 @@
   <meta charset="UTF-8">
   <title>S&P 500 Divergence Hunter</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    body { font-family: Arial, sans-serif; background: #f7f7f7; color: #222; margin: 0; padding: 0;}
-    .container { max-width: 700px; margin: 30px auto; background: #fff; padding: 32px 28px 22px 28px; border-radius: 12px; box-shadow: 0 3px 20px #0001;}
-    h1 { margin-top: 0; }
-    .explain { color: #555; margin-bottom: 26px;}
-    .section { margin-bottom: 38px;}
-    .mispricing-list { padding: 0; margin: 0; list-style: none;}
-    .mispricing { background: #ffe; border: 1px solid #fd6; padding: 16px; border-radius: 8px; margin-bottom: 18px; }
-    .mispricing .symbol { font-weight: bold; font-size: 1.08em; }
-    .mispricing .reason { color: #335; }
-    .mispricing .news { color: #444; margin-top: 9px; margin-bottom: 3px;}
-    #archive { background: #f3f6fa; border-radius: 8px; padding: 15px;}
-    #archive select { margin-bottom: 12px;}
-    .toggle { margin-bottom: 14px;}
-    button, input[type="button"] { cursor: pointer; font-size: 1em; padding: 5px 13px; border-radius: 5px; border: 1px solid #bbb;}
-    .archived-label { font-size: 0.96em; color: #555;}
-    @media (max-width: 500px) {
-      .container { padding: 10px; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <h1>S&P 500 Divergence Hunter</h1>
     <div class="explain">
-      Finds large moves in S&P 500 stocks that diverge from SPY, surfaces cases where the price action can't be explained by news or where the news is not fundamentally relevant. Updates every 30 minutes. All data shown is public and for educational purposes only.
+      Finds large moves in S&P 500 stocks that diverge from SPY, surfaces cases where the price action can't be explained by news or where the news is not fundamentally relevant. Updates every 30 minutes.<br>
+      <b>All data is public and for educational purposes only.</b>
     </div>
 
     <div class="section" id="likelySection">
@@ -56,10 +38,15 @@
       <input type="button" value="Delete" id="deleteArchive" title="Delete this archive entry">
       <div id="archiveResults" style="margin-top:10px;"></div>
     </div>
+
+    <div class="section center">
+      <button id="manualPullBtn" class="primary-btn">Pull Latest <span id="cooldown"></span></button>
+    </div>
   </div>
   <script>
     // === CONFIG ===
-    const API_URL = 'https://nkmiuk4v42.execute-api.us-east-1.amazonaws.com/prod/news'; // <-- PUT your API endpoint here!
+    const API_URL = 'https://nkmiuk4v42.execute-api.us-east-1.amazonaws.com/prod/news'; // <-- YOUR API endpoint
+    const MANUAL_PULL_COOLDOWN = 180; // seconds
 
     // === UTILS ===
     function fmtTime(d) {
@@ -70,10 +57,6 @@
       if (minutes < 30) d.setMinutes(0,0,0);
       else d.setMinutes(30,0,0);
       return d;
-    }
-    function getNowKey() {
-      let d = new Date();
-      return roundToNearestHalfHour(new Date(d)).toISOString();
     }
     function archiveKey(ts) {
       return 'sp500_mispricings_' + ts;
@@ -144,6 +127,10 @@
     }
 
     // === MAIN LOAD ===
+    function getNowKey() {
+      let d = new Date();
+      return roundToNearestHalfHour(new Date(d)).toISOString();
+    }
     function showResults(result) {
       const likelyList = document.getElementById('likelyList');
       const possibleList = document.getElementById('possibleList');
@@ -162,7 +149,11 @@
         updateArchiveDropdown();
         return;
       }
-      fetch(API_URL)
+      fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
         .then(r=>r.json())
         .then(result=>{
           showResults(result);
@@ -189,6 +180,27 @@
       }, msToNextHalfHour());
     }
 
+    // === COOLDOWN ===
+    let cooldownSeconds = 0;
+    let cooldownTimer = null;
+    function startCooldown() {
+      cooldownSeconds = MANUAL_PULL_COOLDOWN;
+      updateCooldownDisplay();
+      document.getElementById('manualPullBtn').disabled = true;
+      cooldownTimer = setInterval(() => {
+        cooldownSeconds--;
+        updateCooldownDisplay();
+        if (cooldownSeconds <= 0) {
+          clearInterval(cooldownTimer);
+          document.getElementById('manualPullBtn').disabled = false;
+          document.getElementById('cooldown').textContent = '';
+        }
+      }, 1000);
+    }
+    function updateCooldownDisplay() {
+      document.getElementById('cooldown').textContent = cooldownSeconds > 0 ? `(${cooldownSeconds}s)` : '';
+    }
+
     // === EVENT HOOKS ===
     document.getElementById('togglePossible').addEventListener('change', function() {
       document.getElementById('possibleMispricings').style.display = this.checked ? '' : 'none';
@@ -200,6 +212,12 @@
       if (val && confirm("Delete this archive entry?")) {
         localStorage.removeItem(archiveKey(val));
         updateArchiveDropdown();
+      }
+    });
+    document.getElementById('manualPullBtn').addEventListener('click', function() {
+      if (cooldownSeconds === 0) {
+        fetchAndRender(true);
+        startCooldown();
       }
     });
 
