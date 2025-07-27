@@ -75,42 +75,46 @@
     function getAllArchiveTimestamps() {
       return Object.keys(localStorage).filter(k=>k.startsWith('sp500_mispricings_')).map(k=>k.slice('sp500_mispricings_'.length));
     }
+
     function updateArchiveDropdown() {
       let sel = document.getElementById('archiveDropdown');
       let old = sel.value;
       sel.innerHTML = '';
+    
+      // Always add the None option
+      let noneOpt = document.createElement('option');
+      noneOpt.value = '';
+      noneOpt.textContent = 'None';
+      sel.appendChild(noneOpt);
+    
       let timestamps = getAllArchiveTimestamps().sort().reverse();
-      timestamps.forEach(ts=>{
+      timestamps.forEach(ts => {
         let d = new Date(ts);
         let opt = document.createElement('option');
         opt.value = ts;
         opt.textContent = fmtTime(d);
         sel.appendChild(opt);
       });
+    
+      // Keep current selection if still present, else default to None
       if (old && timestamps.includes(old)) sel.value = old;
-      else if (timestamps.length) sel.value = timestamps[0];
+      else sel.value = '';
       showArchive();
     }
-
-    // === RENDERING ===
-    function renderMispricings(list, elem, type) {
-      elem.innerHTML = '';
-      list.forEach(m=>{
-        let li = document.createElement('li');
-        li.className = 'mispricing';
-        li.innerHTML = `<div class="symbol">${m.symbol} <span style="color:${m.change < 0 ? '#b11' : '#1a4'}">${m.change.toFixed(2)}%</span></div>
-          <div class="reason">${m.reason||''}</div>
-          ${m.news ? `<div class="news"><b>News:</b><br>${m.news.replace(/\n/g,'<br>')}</div>` : ''}
-          `;
-        elem.appendChild(li);
-      });
-    }
+    
     function showArchive() {
       let sel = document.getElementById('archiveDropdown');
       let val = sel.value;
-      let result = val ? loadArchive(val) : null;
       let archiveDiv = document.getElementById('archiveResults');
-      if (!result) { archiveDiv.innerHTML = '<em>No results archived.</em>'; return; }
+      if (!val) {
+        archiveDiv.innerHTML = '<em>No results archived.</em>';
+        return;
+      }
+      let result = loadArchive(val);
+      if (!result) {
+        archiveDiv.innerHTML = '<em>No results archived.</em>';
+        return;
+      }
       let html = '';
       html += `<h4>Likely Mispricings</h4>`;
       if (result.likelyMispricings?.length)
@@ -127,6 +131,21 @@
       else
         html += `<div style="color:#888;">None</div>`;
       archiveDiv.innerHTML = html;
+    }
+
+
+    // === RENDERING ===
+    function renderMispricings(list, elem, type) {
+      elem.innerHTML = '';
+      list.forEach(m=>{
+        let li = document.createElement('li');
+        li.className = 'mispricing';
+        li.innerHTML = `<div class="symbol">${m.symbol} <span style="color:${m.change < 0 ? '#b11' : '#1a4'}">${m.change.toFixed(2)}%</span></div>
+          <div class="reason">${m.reason||''}</div>
+          ${m.news ? `<div class="news"><b>News:</b><br>${m.news.replace(/\n/g,'<br>')}</div>` : ''}
+          `;
+        elem.appendChild(li);
+      });
     }
 
     // === MAIN LOAD ===
