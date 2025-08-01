@@ -40,14 +40,20 @@
       <div id="archiveResults" style="margin-top:18px;"></div>
     </div>
 
-
     <div class="section center">
       <button id="manualPullBtn" class="primary-btn">Pull Latest <span id="cooldown"></span></button>
     </div>
   </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" style="
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    background:#fff;display:none;align-items:center;justify-content:center;
+    font-size:24px;z-index:9999;">Loading...</div>
+
   <script>
     // === CONFIG ===
-    const API_URL = 'https://nkmiuk4v42.execute-api.us-east-1.amazonaws.com/prod/news'; // <-- YOUR API endpoint
+    const API_URL = 'https://nkmiuk4v42.execute-api.us-east-1.amazonaws.com/prod/news';
     const MANUAL_PULL_COOLDOWN = 180; // seconds
 
     // === UTILS ===
@@ -80,7 +86,6 @@
       let old = sel.value;
       sel.innerHTML = '';
     
-      // Always add the None option
       let noneOpt = document.createElement('option');
       noneOpt.value = '';
       noneOpt.textContent = 'None';
@@ -95,7 +100,6 @@
         sel.appendChild(opt);
       });
     
-      // Keep current selection if still present, else default to None
       if (old && timestamps.includes(old)) sel.value = old;
       else sel.value = '';
       showArchive();
@@ -132,22 +136,19 @@
       archiveDiv.innerHTML = html;
     }
 
-
     // === RENDERING ===
-    function renderMispricings(list, elem, type) {
+    function renderMispricings(list, elem) {
       elem.innerHTML = '';
       list.forEach(m=>{
         let li = document.createElement('li');
         li.className = 'mispricing';
         li.innerHTML = `<div class="symbol">${m.symbol} <span style="color:${m.change < 0 ? '#b11' : '#1a4'}">${m.change.toFixed(2)}%</span></div>
           <div class="reason">${m.reason||''}</div>
-          ${m.news ? `<div class="news"><b>News:</b><br>${m.news.replace(/\n/g,'<br>')}</div>` : ''}
-          `;
+          ${m.news ? `<div class="news"><b>News:</b><br>${m.news.replace(/\n/g,'<br>')}</div>` : ''}`;
         elem.appendChild(li);
       });
     }
 
-    // === MAIN LOAD ===
     function getNowKey() {
       let d = new Date();
       return roundToNearestHalfHour(new Date(d)).toISOString();
@@ -155,19 +156,21 @@
     function showResults(result) {
       const likelyList = document.getElementById('likelyList');
       const possibleList = document.getElementById('possibleList');
-      renderMispricings(result.likelyMispricings, likelyList, 'likely');
-      renderMispricings(result.possibleMispricings, possibleList, 'possible');
+      renderMispricings(result.likelyMispricings, likelyList);
+      renderMispricings(result.possibleMispricings, possibleList);
       document.getElementById('noLikely').style.display = result.likelyMispricings.length ? 'none' : '';
       document.getElementById('noPossible').style.display = result.possibleMispricings.length ? 'none' : '';
     }
+
     function fetchAndRender(force=false) {
+      document.getElementById('loadingOverlay').style.display = 'flex';
       const now = roundToNearestHalfHour(new Date());
       const nowKey = now.toISOString();
-      // use cached if available, unless force
       let cached = loadArchive(nowKey);
       if (cached && !force) {
         showResults(cached);
         updateArchiveDropdown();
+        document.getElementById('loadingOverlay').style.display = 'none';
         return;
       }
       fetch(API_URL)
@@ -175,8 +178,10 @@
         .then(result=>{
           showResults(result);
           saveArchive(nowKey, result);
+          document.getElementById('loadingOverlay').style.display = 'none';
         })
         .catch(err=>{
+          document.getElementById('loadingOverlay').style.display = 'none';
           alert("Error fetching results. Check your connection.");
         });
     }
@@ -200,22 +205,31 @@
     // === COOLDOWN ===
     let cooldownSeconds = 0;
     let cooldownTimer = null;
-    function startCooldown() {
-      cooldownSeconds = MANUAL_PULL_COOLDOWN;
-      updateCooldownDisplay();
-      document.getElementById('manualPullBtn').disabled = true;
-      cooldownTimer = setInterval(() => {
-        cooldownSeconds--;
-        updateCooldownDisplay();
-        if (cooldownSeconds <= 0) {
-          clearInterval(cooldownTimer);
-          document.getElementById('manualPullBtn').disabled = false;
-          document.getElementById('cooldown').textContent = '';
-        }
-      }, 1000);
-    }
+
     function updateCooldownDisplay() {
       document.getElementById('cooldown').textContent = cooldownSeconds > 0 ? `(${cooldownSeconds}s)` : '';
+    }
+
+    function runCooldown(endTime) {
+      function tick() {
+        const remaining = Math.max(0, Math.floor((endTime - Date.now())/1000));
+        cooldownSeconds = remaining;
+        updateCooldownDisplay();
+        document.getElementById('manualPullBtn').disabled = remaining > 0;
+        if (remaining > 0) {
+          cooldownTimer = setTimeout(tick, 1000);
+        } else {
+          document.getElementById('cooldown').textContent = '';
+          localStorage.removeItem('cooldownEnd');
+        }
+      }
+      tick();
+    }
+
+    function startCooldown() {
+      const end = Date.now() + MANUAL_PULL_COOLDOWN * 1000;
+      localStorage.setItem('cooldownEnd', end.toString());
+      runCooldown(end);
     }
 
     // === EVENT HOOKS ===
@@ -243,6 +257,11 @@
       fetchAndRender();
       scheduleNextFetch();
       updateArchiveDropdown();
+
+      const savedEnd = localStorage.getItem('cooldownEnd');
+      if (savedEnd && parseInt(savedEnd) > Date.now()) {
+        runCooldown(parseInt(savedEnd));
+      }
     };
   </script>
 </body>
