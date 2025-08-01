@@ -52,14 +52,14 @@ button, input[type="button"] {
   padding: 8px 22px;
   border-radius: 7px;
   border: none;
-  background: linear-gradient(90deg, #3a8ddb 60%, #8147e0 100%);
+  background: linear-gradient(90deg, #3a8ddb 0%, #3a8ddb 100%);
   color: #fff;
   box-shadow: 0 1px 7px #3a8ddb20;
   transition: background 0.15s, box-shadow 0.15s;
   margin: 4px 2px 4px 0;
 }
 button:hover, input[type="button"]:hover, button:focus {
-  background: linear-gradient(90deg, #8147e0 60%, #3a8ddb 100%);
+  background: linear-gradient(90deg, #357cc5 0%, #357cc5 100%);
   box-shadow: 0 2px 12px #8147e070;
 }
 input[type="button"]:disabled, button:disabled {
@@ -97,4 +97,3 @@ input[type="button"]:disabled, button:disabled {
 @media (max-width:500px) {
   .styled-select { min-width: 80px; }
 }
-
